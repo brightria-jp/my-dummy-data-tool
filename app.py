@@ -5,18 +5,33 @@ from datetime import datetime
 
 st.set_page_config(page_title="多業種データジェネレーター", layout="wide")
 
-# --- UIデザイン（文字色を濃く、枠線をはっきりさせる） ---
+# --- UIデザイン（枠の均一化・右上メニューの非表示・文字色の強化） ---
 st.markdown("""
     <style>
-    /* メトリック全体のスタイル */
+    /* 右上のメニュー（三本線）とGitHubアイコンなどを完全に隠す */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* メトリック全体のスタイル（高さを固定して均一化） */
     [data-testid="stMetric"] {
         background-color: #ffffff; 
-        border: 2px solid #d0d0d0; /* 枠線を少し太く */
+        border: 2px solid #d0d0d0;
         padding: 20px !important;
         border-radius: 12px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        min-height: 140px;
+        /* 高さを固定することで枠を均一にします */
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
+    
+    /* カラムの間隔を調整して均等に見せる */
+    [data-testid="stHorizontalBlock"] {
+        gap: 1rem;
+    }
+
     /* ラベル（項目名）の文字色を濃く */
     [data-testid="stMetricLabel"] {
         color: #1a1a1a !important;
@@ -41,11 +56,11 @@ with st.sidebar:
         ["カフェ", "居酒屋", "アパレル", "コンビニ", "ガソリンスタンド", "スーパー", "ショッピングモール", "ファミレス", "ホテル"])
     years = st.slider("期間（過去何年分か）", 1, 5, 2)
     
-    # 件数指定機能の追加
+    # 件数指定機能
     max_rows = st.number_input("表示・保存する最大件数", min_value=1, max_value=2000, value=365)
     
     st.divider()
-    st.write("Ver.4.1: 表示件数指定・視認性向上モデル")
+    st.write("Ver.4.2: UI最適化・セキュリティ強化モデル")
 
 # --- 業界別詳細設定 ---
 configs = {
@@ -93,10 +108,7 @@ for date_val in dates:
         "客数": cust, "客単価": spend, "売上": cust * spend
     })
 
-# DataFrame作成
 df = pd.DataFrame(data)
-
-# 指定された件数で切り出し
 df = df.tail(max_rows)
 
 df['日付'] = pd.to_datetime(df['日付'])
@@ -107,7 +119,8 @@ df['売上YoY(%)'] = ((df['売上'] / df['前年売上']) * 100).round(1)
 
 # --- UI表示 ---
 latest = df.iloc[-1]
-m1, m2, m3 = st.columns(3) # カラム数を3に変更
+# gapをlargeにして間隔を整え、3カラムで表示
+m1, m2, m3 = st.columns(3, gap="large") 
 with m1: st.metric("昨日の売上", f"¥{int(latest['売上']):,}", f"{latest['売上YoY(%)']}%")
 with m2: st.metric("昨日の客数", f"{int(latest['客数'])}名")
 with m3: st.metric("イベント発生総数", f"{len(df[df['イベント内容'] != '通常営業'])}件")
@@ -118,7 +131,7 @@ with c1:
     st.subheader("📈 売上推移グラフ")
     st.line_chart(df.set_index("日付")[["売上"]])
 with c2:
-    st.subheader("📋 履歴データ（異常値が確認できます）")
+    st.subheader("📋 履歴データ")
     st.dataframe(df.drop(columns=['前年日付','前年客数','前年売上']).sort_values("日付", ascending=False).fillna("-"), use_container_width=True)
 
 csv = df.to_csv(index=False).encode('utf-8')
